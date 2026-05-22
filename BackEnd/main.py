@@ -1,5 +1,7 @@
 from flask import Flask
 from database import db
+from flask_cors import CORS
+from flask_jwt_extended import JWTManager
 
 #MODELS
 from app.models.user import User
@@ -15,9 +17,13 @@ from app.routes.categories import categories_bp
 from app.routes.cart import cart_bp
 
 app = Flask(__name__)
+CORS(app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:12345@localhost/loja_virtual'
+app.config['JWT_SECRET_KEY'] = 'kaelwq'
+
 db.init_app(app)
+jwt = JWTManager(app)
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(products_bp)

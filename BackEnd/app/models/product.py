@@ -8,6 +8,8 @@ class Product(db.Model):
     descricao = db.Column(db.Text, nullable=True)
     preco = db.Column(db.Float, nullable=False)
     estoque = db.Column(db.Integer, nullable=False)
+
+    imagem_url = db.Column(db.String, nullable=True)
     
     categoria_id = db.Column(
         db.Integer,
