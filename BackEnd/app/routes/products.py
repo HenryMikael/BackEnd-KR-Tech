@@ -3,13 +3,14 @@ from app.models.category import Category
 from app.models.product  import Product
 from app.models.user import User
 from database import db
+import os
 
 products_bp = Blueprint('products', __name__)
 
 #CRIAR PRODUTO
 @products_bp.route('/products', methods=['POST'])
 def create_product():
-
+    
     dados = request.get_json()
 
     user_id = dados.get('user_id')
@@ -25,6 +26,7 @@ def create_product():
     preco = dados.get('preco')
     estoque = dados.get('estoque')
     categoria_id = dados.get('categoria_id')
+    imagem_url = dados.get('imagem_url')
 
     if not nome or not descricao or preco is None or not categoria_id:
         return jsonify({'error': 'Preencha todos os campos'}), 400
@@ -39,7 +41,8 @@ def create_product():
         descricao=descricao,
         preco=preco,
         estoque=estoque,
-        categoria_id=categoria_id
+        categoria_id=categoria_id,
+        imagem_url=imagem_url
     )
 
     db.session.add(novo_produto)
@@ -50,6 +53,7 @@ def create_product():
 #LISTAR PRODUTOS
 @products_bp.route('/products', methods=['GET'])
 def list_products():
+    
     nome = request.args.get('nome')
     categoria = request.args.get('categoria')
 
@@ -72,7 +76,8 @@ def list_products():
             'descricao': produto.descricao,
             'preco': produto.preco,
             'estoque': produto.estoque,
-            'categoria': produto.categoria_rel.nome
+            'categoria': produto.categoria_rel.nome,
+            'imagem_url': produto.imagem_url
         })
 
     return jsonify(lista), 200
@@ -92,7 +97,7 @@ def get_product(id):
         'descricao': produto.descricao,
         'preco': produto.preco,
         'estoque': produto.estoque,
-        'categoria': produto.categoria
+        'categoria': produto.categoria_rel.nome
     }), 200
 
 #EDITAR PRODUTO
@@ -103,17 +108,19 @@ def update_product(id):
 
     if not produto:
         return jsonify({'error': 'Produto não encontrado'}), 404
-    
-    produto.nome = request.json.get('nome', produto.nome)
-    produto.descricao = request.json.get('descricao', produto.descricao)
-    produto.preco = request.json.get('preco', produto.preco)
-    produto.estoque = request.json.get('estoque', produto.estoque)
-    produto.categoria = request.json.get('categoria', produto.categoria)
+
+    produto.nome = request.form.get('nome', produto.nome)
+    produto.descricao = request.form.get('descricao', produto.descricao)
+    produto.preco = request.form.get('preco', produto.preco)
+    produto.estoque = request.form.get('estoque', produto.estoque)
+    produto.categoria_id = request.form.get('categoria_id', produto.categoria_id)
+    produto.imagem_url = request.form.get( 'imagem_url', produto.imagem_url)
 
     db.session.commit()
-    
 
-    return jsonify({'message': 'Produto atualizado com sucesso'}), 200
+    return jsonify({
+        'message': 'Produto atualizado com sucesso'
+    }), 200
 
 #DELETAR PRODUTO
 @products_bp.route('/products/<int:id>', methods=['DELETE'])

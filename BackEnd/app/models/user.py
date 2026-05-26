@@ -9,7 +9,16 @@ class User(db.Model):
     nome = db.Column(db.String(30), nullable=False)
     senha = db.Column(db.String(255), nullable=False)
     email = db.Column(db.String(255), unique=True, nullable=False)
-    type = db.Column(db.Enum('cliente', 'admin', name='user_type'), nullable=False, default='cliente')
+    type = db.Column(db.Enum(
+        'cliente', 'admin',
+        name='user_type'),
+        nullable=False,
+        default='cliente'
+        )
+    
+    codigo_ativacao = db.Column(db.String(6))
+    codigo_recuperacao = db.Column(db.String(6))
+    email_verificado = db.Column(db.Boolean, default=False)
 
     def set_senha(self, senha):
         self.senha = generate_password_hash(senha)

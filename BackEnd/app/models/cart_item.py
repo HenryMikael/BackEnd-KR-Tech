@@ -23,5 +23,3 @@ class CartItem(db.Model):
         'Cart',
         back_populates='itens'
     )
-
-    produto = db.relationship('Product')

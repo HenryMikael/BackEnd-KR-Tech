@@ -10,6 +10,7 @@ cart_bp = Blueprint('cart', __name__)
 #ADICIONAR PRODUTO AO CARRINHO
 @cart_bp.route('/cart/add', methods=['POST'])
 def add_to_cart():
+
     dados = request.get_json()
 
     user_id = dados.get('user_id')
@@ -59,6 +60,7 @@ def add_to_cart():
 #LISTAR cart
 @cart_bp.route('/cart/<int:user_id>', methods=['GET'])
 def list_cart(user_id):
+    
     cart = Cart.query.filter_by(user_id=user_id).first()
 
     if not cart:
@@ -109,6 +111,7 @@ def update_quantity(item_id):
 #REMOVER ITEM 
 @cart_bp.route('/cart/item/<int:item_id>', methods=['DELETE'])
 def remove_item(item_id):
+    
     item = CartItem.query.get(item_id)
 
     if not item:

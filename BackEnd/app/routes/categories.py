@@ -30,7 +30,7 @@ def create_category():
 @categories_bp.route('/categories', methods=['GET'])
 def list_categories():
 
-    categorias = Category.query.all()
+    categorias = Category.query.order_by(Category.id.asc()).all()
 
     lista = []
 
@@ -38,3 +38,17 @@ def list_categories():
         lista.append({'id': categoria.id, 'nome': categoria.nome})
 
     return jsonify(lista), 200
+
+#DELETAR CATEGORIA
+@categories_bp.route('/categories/<int:id>', methods=['DELETE'])
+def delete_category(id):
+
+    categoria = Category.query.get(id)
+
+    if not categoria:
+        return jsonify({'error': 'Categoria não encontrada.'}), 404
+    
+    db.session.delete(categoria)
+    db.session.commit()
+
+    return jsonify({'message': 'Categoria deletada com sucesso.'}), 200
