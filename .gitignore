@@ -1,0 +1,26 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+.env
+instance/
+*.sqlite3
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# Flutter
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Android Studio
+.idea/
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db
