@@ -1,6 +1,5 @@
 from flask import Blueprint, request, jsonify
 from database import db
-
 from app.models.cart import Cart
 from app.models.cart_item import CartItem
 from app.models.product import Product
@@ -35,8 +34,8 @@ def add_to_cart():
     
 
     item_existente = CartItem.query.filter_by(
-        carrinho_id=cart.id,
-        produto_id=product_id
+        cart_id=cart.id,
+        product_id=produto.id
     ).first()
 
 
@@ -70,16 +69,16 @@ def list_cart(user_id):
     total = 0
 
     for item in cart.itens:
-        subtotal = item.quantidade * item.produto.preco
+        subtotal = item.quantidade * item.produtos.preco
         total += subtotal
 
-    itens.append({
-        'item_id': item.id,
-        'produto': item.produto.nome,
-        'preco': item.produto.preco,
-        'quantidade': item.quantidade,
-        'subtotal': subtotal
-    })
+        itens.append({
+            'item_id': item.id,
+            'produto': item.produtos.nome,
+            'preco': item.produtos.preco,
+            'quantidade': item.quantidade,
+            'subtotal': subtotal
+        })
 
     return jsonify({
         'itens': itens,

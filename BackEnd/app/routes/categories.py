@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app.models.category import Category
+from app.models.user import User
 from database import db
 
 categories_bp = Blueprint('categories', __name__)
@@ -10,6 +11,10 @@ def create_category():
 
     dados = request.get_json()
     nome = dados.get('nome')
+
+    if not usuario or usuario.type != 'admin':
+        return jsonify({'error': 'Apenas admins podem criar produtos'}), 403
+
     if not nome:
         return jsonify({'error': 'Nome é obrigatório.'}), 400
     
