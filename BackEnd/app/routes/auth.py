@@ -1,32 +1,32 @@
 from flask import Blueprint, request, jsonify
 from app.models.user import User
-from database import db
-from werkzeug.security import generate_password_hash
+from extensions import db
 import random
-from app.services.email_service import send_email
+from services.email_service import send_email
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from utils.validators import validar_json_requerido
+from validators.auth_validators import validar_registro, validar_login
 
 auth_bp = Blueprint('auth', __name__)
 
 #CADASTRO
 @auth_bp.route('/register', methods=['POST'])
+@validar_json_requerido(['nome', 'email', 'senha', 'confirmar_senha'])
 def register():
     dados = request.get_json()
-
-    nome = dados.get('nome')
-    senha = dados.get('senha')
-    email = dados.get('email')
-    confirmar_senha = dados.get('confirmar_senha')
-
-    codigo = str(random.randint(100000, 999999))
-
-    if senha != confirmar_senha:
-        return jsonify({'message': 'As senhas não coincidem'}), 400
-
-    if not nome or not senha or not email:
-        return jsonify({'message': 'Preencha todos os campos'}), 400
     
-    usuario_existente = User.query.filter_by(nome=nome).first()
-
+    nome = dados.get('nome')
+    email = dados.get('email')
+    senha = dados.get('senha')
+    
+    erro = validar_registro(dados)
+    if erro:
+        return erro
+    
+    codigo = str(random.randint(100000, 999999))
+    
+    usuario_existente = User.query.filter_by(email=email).first()
+    
     if usuario_existente:
         return jsonify({'message': 'Usuário já existe'}), 400
     
@@ -35,38 +35,48 @@ def register():
         email=email,
         codigo_ativacao=codigo,
         email_verificado=False
-        )
+    )
     novo_usuario.set_senha(senha)
-
+    
     db.session.add(novo_usuario)
     db.session.commit()
-
+    
     send_email(email, codigo)
-
-    return jsonify({'message': 'codigo enviado para o email'}), 201
+    
+    return jsonify({'message': 'Código enviado para o email'}), 201
 
 #LOGIN
 @auth_bp.route('/login', methods=['POST'])
+@validar_json_requerido(['email', 'senha'])
 def login():
     dados = request.get_json()
-
+    
     email = dados.get('email')
     senha = dados.get('senha')
-
+    
+    erro = validar_login(dados)
+    if erro:
+        return erro
+    
     usuario = User.query.filter_by(email=email).first()
-
+    
     if not usuario:
         return jsonify({'error': 'Usuário não encontrado'}), 404
-
+    
     if not usuario.email_verificado:
         return jsonify({'error': 'Email não verificado'}), 401
-
-    if not usuario.check_senha(senha):
+    
+    if not usuario.verificar_senha(senha):
         return jsonify({'error': 'Senha incorreta'}), 401
     
+    access_token = create_access_token(identity=usuario.id)
+    
     return jsonify({
-        'message': 'Login bem-sucedido'
-        }), 200 
+        'message': 'Login bem-sucedido',
+        'access_token': access_token,
+        'user_id': usuario.id,          
+        'nome': usuario.nome 
+    }), 200
 
 #RECUPERAR SENHA
 @auth_bp.route('/recover-password', methods=['PUT'])
@@ -130,26 +140,53 @@ def verify_recover_code():
     
     return jsonify({'message': 'Código de recuperação verificado com sucesso'}), 200
 
-@auth_bp.route('/reset-password', methods=['POST'])
-def reset_password():
+@auth_bp.route('/reset-password', methods=['POST']) 
+def reset_password(): 
     dados = request.get_json()
 
-    email = dados.get('email')
-    nova_senha = dados.get('nova_senha')
+    email = dados.get('email') 
+    codigo = dados.get('codigo') 
+    nova_senha = dados.get('nova_senha') 
 
-    usuario = User.query.filter_by(email=email).first()
+    if not email or not codigo or not nova_senha: 
+        return jsonify({ 'error': 'Preencha todos os campos' }), 400
+    
+    usuario = User.query.filter_by(email=email).first() 
+
+    if not usuario: 
+        return jsonify({ 'error': 'Usuário não encontrado' }), 404 
+    
+    if str(usuario.codigo_recuperacao).strip() != str(codigo).strip(): 
+        return jsonify({ 'error': 'Código inválido' }), 400 
+    
+    usuario.set_senha(nova_senha) 
+    usuario.codigo_recuperacao = None 
+
+    db.session.commit() 
+
+    return jsonify({ 'message': 'Senha alterada com sucesso' }), 200
+
+@auth_bp.route('/me', methods=['GET'])
+@jwt_required()
+def get_current_user():
+    user_id = get_jwt_identity()
+    usuario = User.query.get(user_id)
 
     if not usuario:
-        return jsonify({
-            'erro': 'Usuário não encontrado'
-        }), 404
-
-    usuario.senha = generate_password_hash(nova_senha)
-
-    usuario.codigo_recuperacao = None
-
-    db.session.commit()
-
+        return jsonify({'error': 'Usuário não encontrado'}), 404
+    
     return jsonify({
-        'mensagem': 'Senha alterada com sucesso'
-    })
+        'id': usuario.id,
+        'nome': usuario.nome,
+        'email': usuario.email,
+        'email_verificado': usuario.email_verificado
+    }), 200
+
+@auth_bp.route('/logout', methods=['POST']) 
+@jwt_required()
+def logout(): 
+    usuario_id = get_jwt_identity() 
+    return jsonify({ 
+        'message': 'Logout realizado com sucesso', 
+        'user_id': usuario_id 
+    }), 200

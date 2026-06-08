@@ -1,25 +1,23 @@
 from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required
+from app.decorators.admin_required import admin_required
 from app.models.category import Category
 from app.models.product  import Product
-from app.models.user import User
-from database import db
+from app.utils.validators import validar_json_requerido, validar_id
+from app.validators.product_validators import validar_produto
+from extensions import db
 import os
 
 products_bp = Blueprint('products', __name__)
 
 #CRIAR PRODUTO
-@products_bp.route('/products', methods=['POST'])
+@products_bp.route('', methods=['POST'])
+@jwt_required()
+@admin_required
+@validar_json_requerido(['nome', 'preco', 'categoria_id'])
 def create_product():
     
     dados = request.get_json()
-
-    user_id = dados.get('user_id')
-
-    usuario = User.query.get(user_id)
-
-    #VERIFICAÇÃO DE ADMIN
-    if not usuario or usuario.type != 'admin':
-        return jsonify({'error': 'Apenas admins podem criar produtos'}), 403
 
     nome = dados.get('nome')
     descricao = dados.get('descricao')
@@ -28,13 +26,9 @@ def create_product():
     categoria_id = dados.get('categoria_id')
     imagem_url = dados.get('imagem_url')
 
-    if not nome or not descricao or preco is None or not categoria_id:
-        return jsonify({'error': 'Preencha todos os campos'}), 400
-
-    categoria = Category.query.get(categoria_id)
-
-    if not categoria:
-        return jsonify({'error': 'Categoria não encontrada'}), 404
+    erro = validar_produto(dados)
+    if erro:
+        return erro
 
     novo_produto = Product(
         nome=nome,
@@ -48,14 +42,14 @@ def create_product():
     db.session.add(novo_produto)
     db.session.commit()
 
-    return jsonify({'message': 'Produto criado com sucesso'}), 201
+    return jsonify({'message': 'Produto criado com sucesso', 'id': novo_produto.id}), 201
 
 #LISTAR PRODUTOS
 @products_bp.route('/products', methods=['GET'])
 def list_products():
     
     nome = request.args.get('nome')
-    categoria = request.args.get('categoria')
+    categoria = request.args.get('categoria') 
 
     query = Product.query
 
@@ -101,29 +95,35 @@ def get_product(id):
     }), 200
 
 #EDITAR PRODUTO
-@products_bp.route('/products/<int:id>', methods=['PUT'])
+@products_bp.route('/<int:id>', methods=['PUT'])
+@jwt_required()
+@admin_required
 def update_product(id):
 
-    produto = Product.query.get(id)
+    dados = request.get_json()
 
+    erro = validar_produto(dados, is_update=True)
+    if erro:
+        return erro
+    
+    produto = Product.query.get(id)
     if not produto:
         return jsonify({'error': 'Produto não encontrado'}), 404
 
-    produto.nome = request.form.get('nome', produto.nome)
-    produto.descricao = request.form.get('descricao', produto.descricao)
-    produto.preco = request.form.get('preco', produto.preco)
-    produto.estoque = request.form.get('estoque', produto.estoque)
-    produto.categoria_id = request.form.get('categoria_id', produto.categoria_id)
-    produto.imagem_url = request.form.get( 'imagem_url', produto.imagem_url)
+    produto.nome = dados.get('nome', produto.nome)
+    produto.descricao = dados.get('descricao', produto.descricao)
+    produto.preco = dados.get('preco', produto.preco)
+    produto.estoque = dados.get('estoque', produto.estoque)
+    produto.categoria_id = dados.get('categoria_id', produto.categoria_id)
+    produto.imagem_url = dados.get('imagem_url', produto.imagem_url)
 
     db.session.commit()
-
-    return jsonify({
-        'message': 'Produto atualizado com sucesso'
-    }), 200
+    return jsonify({'message': 'Produto atualizado com sucesso'}), 200
 
 #DELETAR PRODUTO
 @products_bp.route('/products/<int:id>', methods=['DELETE'])
+@jwt_required()
+@admin_required
 def delete_product(id):
 
     produto = Product.query.get(id)

@@ -1,4 +1,4 @@
-from database import db
+from extensions import db
 
 class Cart(db.Model):
     __tablename__ = 'carrinho'

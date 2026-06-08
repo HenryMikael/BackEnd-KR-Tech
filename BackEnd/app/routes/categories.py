@@ -1,35 +1,46 @@
 from flask import Blueprint, request, jsonify
 from app.models.category import Category
 from app.models.user import User
-from database import db
+from flask_jwt_extended import get_jwt_identity, jwt_required
+from extensions import db
 
 categories_bp = Blueprint('categories', __name__)
 
 #CRIAR CATEGORIA
-@categories_bp.route('/categories', methods=['POST'])
+@categories_bp.route('', methods=['POST'])
+@jwt_required()
 def create_category():
 
     dados = request.get_json()
     nome = dados.get('nome')
 
-    if not usuario or usuario.type != 'admin':
-        return jsonify({'error': 'Apenas admins podem criar produtos'}), 403
+    usuario = get_jwt_identity()
+
+    user = User.query.get(usuario)
+
+    if not user or not user.is_admin:
+        return jsonify({'error': 'Apenas admins podem criar categorias'}), 403
 
     if not nome:
         return jsonify({'error': 'Nome é obrigatório.'}), 400
-    
+
     categoria_existente = Category.query.filter_by(nome=nome).first()
 
     if categoria_existente:
         return jsonify({'error': 'Categoria já existe.'}), 400
-    
+
     nova_categoria = Category(nome=nome)
 
     db.session.add(nova_categoria)
     db.session.commit()
-   
 
-    return jsonify({'message': 'Categoria criada com sucesso.', 'categoria': {'id': nova_categoria.id, 'nome': nova_categoria.nome}}), 201
+    return jsonify({
+        'message': 'Categoria criada com sucesso.',
+        'categoria': {
+            'id': nova_categoria.id,
+            'nome': nova_categoria.nome
+        }
+    }), 201
 
 #LISTAR CATEGORIAS
 @categories_bp.route('/categories', methods=['GET'])
